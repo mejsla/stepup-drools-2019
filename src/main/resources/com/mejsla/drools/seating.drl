@@ -1,0 +1,81 @@
+package com.mejsla.drools
+
+import org.slf4j.Logger
+import java.util.Random;
+import java.util.ArrayList;
+import java.util.List;
+import com.mejsla.drools.*
+
+global Logger log;
+
+function Person removeRandomPerson(List people) {
+    return (Person) people.remove(new Random().nextInt(people.size()));
+}
+
+function int findRandomEmptySeat(List seats) {
+    List<Integer> emptySeatIndices = findEmptySeatIndices(seats);
+    int randomSeatNumber = new Random().nextInt(emptySeatIndices.size());
+    return emptySeatIndices.get(randomSeatNumber);
+}
+
+function List<Integer> findEmptySeatIndices(List seats) {
+    List<Integer> indices = new ArrayList<>();
+    for (int index = 0; index < seats.size(); index++) {
+        if (seats.get(index) == null) {
+            indices.add(index);
+        }
+    }
+    return indices;
+}
+
+function int indexOfMisSeatedPerson(List seats) {
+    for (int index = 0; index < seats.size(); index += 2) {
+        Person male = (Person) seats.get(index);
+        Person female = (Person) seats.get(index + 1);
+        if (male != null && male.isFemale()) {
+            return index;
+        }
+        if (female != null && female.isMale()) {
+            return index + 1;
+        }
+    }
+    return -1;
+}
+
+rule "Seat mixed genders"
+    when
+        $seating : Seating($seats: seats, !isSeatingTraditional(seats))
+    then
+        int indexOfMisSeatedPerson = indexOfMisSeatedPerson($seats);
+        int indexOfRandomPerson = new Random().nextInt($seats.size());
+        Person misSeatedPerson = (Person) $seats.get(indexOfMisSeatedPerson);
+        Person randomPerson = (Person) $seats.get(indexOfRandomPerson);
+        log.info("Switching " + misSeatedPerson + " and " + randomPerson);
+        $seats.set(indexOfRandomPerson, misSeatedPerson);
+        $seats.set(indexOfMisSeatedPerson, randomPerson);
+        update($seating);
+end
+
+rule "Seat one person"
+    when
+        $seating : Seating($unseatedPersons: unseatedPersons, $seats: seats, unseatedPersons.empty == false)
+    then
+        Person person = removeRandomPerson($unseatedPersons);
+        int seatIndex = findRandomEmptySeat($seats);
+        $seats.set(seatIndex, person);
+        log.info("Seating " + person + " in seat " + seatIndex);
+        update($seating);
+end
+
+rule "Seat hostess next to door"
+   when
+       $seating : Seating($hostess: hostess, $seats: seats, !isHostessNextToDoor(hostess, seats))
+   then
+       int indexOfHostess = $seats.indexOf($hostess);
+       int indexOfSomePerson = $seats.size() - 1;
+       Person somePerson = (Person) $seats.get(indexOfSomePerson);
+       log.info("Switching hostess " + $hostess + " and " + somePerson);
+       $seats.set(indexOfSomePerson, $hostess);
+       $seats.set(indexOfHostess, somePerson);
+       update($seating);
+end
