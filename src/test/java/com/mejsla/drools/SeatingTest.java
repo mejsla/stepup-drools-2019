@@ -1,6 +1,7 @@
 package com.mejsla.drools;
 
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.kie.api.KieServices;
 import org.kie.api.runtime.KieContainer;
@@ -45,16 +46,16 @@ public class SeatingTest {
         kieSession.insert(seating);
         kieSession.fireAllRules();
 
-        assertTrue(unseatedPersons.isEmpty());
-        assertFalse(seats.contains(null));
+        assertTrue(unseatedPersons.isEmpty()); // No unseated persons
+        assertFalse(seats.contains(null)); // No empty seats
+        assertEquals(seats.size(), new HashSet<>(seats).size()); // All seated persons are unique
     }
 
     @Test
-    public void shouldSeatMixingGenders() {
+    public void shouldSeatHostessNextToDoor() {
         List<Person> unseatedPersons = createPersons(50);
         List<Person> seats = asList(new Person[unseatedPersons.size()]);
-        // The hostess is the first women in the list of persons to seat
-        Person hostess = unseatedPersons.stream().filter(Person::isFemale).findFirst().orElseThrow(IllegalStateException::new);
+        Person hostess = findHostess(unseatedPersons);
 
         Seating seating = new Seating(unseatedPersons, seats, hostess);
 
@@ -62,13 +63,36 @@ public class SeatingTest {
         kieSession.fireAllRules();
 
         // Verify
-        assertTrue(unseatedPersons.isEmpty());
-        assertFalse(seats.contains(null));
-        assertTrue(isSeatingTraditional(seats));
-        assertTrue(isHostessNextToDoor(hostess, seats));
-        assertEquals(seats.size(), new HashSet<>(seats).size()); // Verify that all persons are unique
+        assertTrue(unseatedPersons.isEmpty()); // No unseated persons
+        assertFalse(seats.contains(null)); // No empty seats
+        assertEquals(seats.size(), new HashSet<>(seats).size()); // All seated persons are unique
+        assertTrue(isHostessNextToDoor(hostess, seats)); // Hostess next to door
     }
 
+    @Ignore
+    @Test
+    public void shouldSeatMixingGenders() {
+        List<Person> unseatedPersons = createPersons(50);
+        List<Person> seats = asList(new Person[unseatedPersons.size()]);
+        Person hostess = findHostess(unseatedPersons);
+
+        Seating seating = new Seating(unseatedPersons, seats, hostess);
+
+        kieSession.insert(seating);
+        kieSession.fireAllRules();
+
+        // Verify
+        assertTrue(unseatedPersons.isEmpty()); // No unseated persons
+        assertFalse(seats.contains(null)); // No empty seats
+        assertEquals(seats.size(), new HashSet<>(seats).size()); // All seated persons are unique
+        assertTrue(isHostessNextToDoor(hostess, seats)); // Hostess next to door
+        assertTrue(isSeatingTraditional(seats)); // Every second man and woman
+    }
+
+    private Person findHostess(List<Person> unseatedPersons) {
+        // The hostess is the first women in the list of persons to seat
+        return unseatedPersons.stream().filter(Person::isFemale).findFirst().orElseThrow(IllegalStateException::new);
+    }
 
     private static List<Person> createPersons(int size) {
         if (size % 2 != 0) {
@@ -76,6 +100,4 @@ public class SeatingTest {
         }
         return IntStream.range(0, size).mapToObj(i -> new Person()).collect(Collectors.toList());
     }
-
-
 }

@@ -42,20 +42,6 @@ function int indexOfMisSeatedPerson(List seats) {
     return -1;
 }
 
-rule "Seat mixed genders"
-    when
-        $seating : Seating($seats: seats, !isSeatingTraditional(seats))
-    then
-        int indexOfMisSeatedPerson = indexOfMisSeatedPerson($seats);
-        int indexOfRandomPerson = new Random().nextInt($seats.size());
-        Person misSeatedPerson = (Person) $seats.get(indexOfMisSeatedPerson);
-        Person randomPerson = (Person) $seats.get(indexOfRandomPerson);
-        log.info("Switching " + misSeatedPerson + " and " + randomPerson);
-        $seats.set(indexOfRandomPerson, misSeatedPerson);
-        $seats.set(indexOfMisSeatedPerson, randomPerson);
-        update($seating);
-end
-
 rule "Seat one person"
     when
         $seating : Seating($unseatedPersons: unseatedPersons, $seats: seats, unseatedPersons.empty == false)
