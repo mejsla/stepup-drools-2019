@@ -8,11 +8,14 @@ import org.kie.api.runtime.KieSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static com.mejsla.drools.Seating.isAnyoneSeatedNextToEnemy;
 import static com.mejsla.drools.Seating.isHostessNextToDoor;
 import static com.mejsla.drools.Seating.isSeatingTraditional;
 import static java.util.Arrays.asList;
@@ -40,7 +43,7 @@ public class SeatingTest {
         List<Person> unseatedPersons = createPersons(10);
         List<Person> seats = asList(new Person[unseatedPersons.size()]);
 
-        Seating seating = new Seating(unseatedPersons, seats, null);
+        Seating seating = new Seating(unseatedPersons, seats, null, Map.of());
 
         kieSession.insert(seating);
         kieSession.fireAllRules();
@@ -56,7 +59,7 @@ public class SeatingTest {
         // The hostess is the first women in the list of persons to seat
         Person hostess = unseatedPersons.stream().filter(Person::isFemale).findFirst().orElseThrow(IllegalStateException::new);
 
-        Seating seating = new Seating(unseatedPersons, seats, hostess);
+        Seating seating = new Seating(unseatedPersons, seats, hostess, Map.of());
 
         kieSession.insert(seating);
         kieSession.fireAllRules();
@@ -69,6 +72,26 @@ public class SeatingTest {
         assertEquals(seats.size(), new HashSet<>(seats).size()); // Verify that all persons are unique
     }
 
+    @Test
+    public void shouldNotSeatEnemiesNextToEachOther() {
+        List<Person> unseatedPersons = createPersons(50);
+        List<Person> seats = asList(new Person[unseatedPersons.size()]);
+        // The hostess is the first women in the list of persons to seat
+        Person hostess = unseatedPersons.stream().filter(Person::isFemale).findFirst().orElseThrow(IllegalStateException::new);
+
+        Map<Person, Person> enemyPairs = new HashMap<>();
+        int numberOfEnemyPairs = 19;
+        IntStream.range(0, numberOfEnemyPairs).forEach(i -> enemyPairs.put(unseatedPersons.get(i), unseatedPersons.get(i + numberOfEnemyPairs)));
+
+        Seating seating = new Seating(unseatedPersons, seats, hostess, enemyPairs);
+
+        kieSession.insert(seating);
+        kieSession.fireAllRules();
+
+        // Verify
+        assertFalse(isAnyoneSeatedNextToEnemy(seats, enemyPairs));
+    }
+
 
     private static List<Person> createPersons(int size) {
         if (size % 2 != 0) {
@@ -76,6 +99,4 @@ public class SeatingTest {
         }
         return IntStream.range(0, size).mapToObj(i -> new Person()).collect(Collectors.toList());
     }
-
-
 }

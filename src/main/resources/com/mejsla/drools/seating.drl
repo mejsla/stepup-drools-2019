@@ -5,6 +5,8 @@ import java.util.Random;
 import java.util.ArrayList;
 import java.util.List;
 import com.mejsla.drools.*
+import static com.mejsla.drools.Seating.indexOfMisSeatedPerson;
+import static com.mejsla.drools.Seating.indexOfPersonSeatedNextToHisEnemy;
 
 global Logger log;
 
@@ -26,20 +28,6 @@ function List<Integer> findEmptySeatIndices(List seats) {
         }
     }
     return indices;
-}
-
-function int indexOfMisSeatedPerson(List seats) {
-    for (int index = 0; index < seats.size(); index += 2) {
-        Person male = (Person) seats.get(index);
-        Person female = (Person) seats.get(index + 1);
-        if (male != null && male.isFemale()) {
-            return index;
-        }
-        if (female != null && female.isMale()) {
-            return index + 1;
-        }
-    }
-    return -1;
 }
 
 rule "Seat mixed genders"
@@ -78,4 +66,19 @@ rule "Seat hostess next to door"
        $seats.set(indexOfSomePerson, $hostess);
        $seats.set(indexOfHostess, somePerson);
        update($seating);
+end
+
+rule "Avoid seating enemies next to each other"
+    when
+        $seating : Seating($enemyPairs: enemyPairs, $seats: seats, isAnyoneSeatedNextToEnemy(seats, enemyPairs))
+    then
+        int indexOfEnemy = indexOfPersonSeatedNextToHisEnemy($seats, $enemyPairs);
+        int indexOfRandomPerson = new Random().nextInt($seats.size());
+
+        Person enemy = (Person) $seats.get(indexOfEnemy);
+        Person randomPerson = (Person) $seats.get(indexOfRandomPerson);
+        log.info("Switching enemy " + enemy + " and " + randomPerson);
+        $seats.set(indexOfRandomPerson, enemy);
+        $seats.set(indexOfEnemy, randomPerson);
+        update($seating);
 end
