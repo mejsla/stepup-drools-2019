@@ -14,6 +14,11 @@ public class Seating {
         this.hostess = hostess;
     }
 
+    @Override
+    public String toString() {
+        return "[Unseated: " + unseatedPersons.size() + ", seated: " + seats.size() + ", hostess: " + hostess + "]";
+    }
+
     public List<Person> getUnseatedPersons() {
         return unseatedPersons;
     }
