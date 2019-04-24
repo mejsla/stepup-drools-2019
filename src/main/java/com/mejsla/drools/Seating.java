@@ -2,6 +2,8 @@ package com.mejsla.drools;
 
 import java.util.List;
 
+import static java.util.Objects.requireNonNull;
+
 public class Seating {
 
     private final List<Person> unseatedPersons;
@@ -9,8 +11,8 @@ public class Seating {
     private final Person hostess;
 
     Seating(List<Person> unseatedPersons, List<Person> seats, Person hostess) {
-        this.unseatedPersons = unseatedPersons;
-        this.seats = seats;
+        this.unseatedPersons = requireNonNull(unseatedPersons);
+        this.seats = requireNonNull(seats);
         this.hostess = hostess;
     }
 

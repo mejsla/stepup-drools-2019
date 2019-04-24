@@ -1,15 +1,16 @@
 package com.mejsla.drools
 
 import org.slf4j.Logger
-import java.util.Random;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Random
+import java.util.ArrayList
+import java.util.List
 import com.mejsla.drools.*
 
-global Logger log;
+global Logger log
+global Random globalRandom
 
-function Person removeRandomPerson(List people) {
-    return (Person) people.remove(new Random().nextInt(people.size()));
+function Person removeRandomPerson(Random random, List people) {
+    return (Person) people.remove(random.nextInt(people.size()));
 }
 
 function int findRandomEmptySeat(List seats) {
@@ -46,7 +47,7 @@ rule "Seat one person"
     when
         $seating : Seating($unseatedPersons: unseatedPersons, $seats: seats, unseatedPersons.empty == false)
     then
-        Person person = removeRandomPerson($unseatedPersons);
+        Person person = removeRandomPerson(globalRandom, $unseatedPersons);
         int seatIndex = findRandomEmptySeat($seats);
         $seats.set(seatIndex, person);
         log.info("Seating " + person + " in seat " + seatIndex);
@@ -64,4 +65,33 @@ rule "Seat hostess next to door"
        $seats.set(indexOfSomePerson, $hostess);
        $seats.set(indexOfHostess, somePerson);
        update($seating);
+end
+
+rule "Traditional seating"
+    when
+        $seating : Seating($seats: seats, !isSeatingTraditional(seats))
+    then
+        int indexOfMisSeatedPerson = indexOfMisSeatedPerson($seats);
+        int indexOfRandomPerson = globalRandom.nextInt($seats.size());
+        Person misSeatedPerson = (Person) $seats.get(indexOfMisSeatedPerson);
+        Person randomPerson = (Person) $seats.get(indexOfRandomPerson);
+
+        log.info("Switching " + misSeatedPerson + " and " + randomPerson);
+        $seats.set(indexOfRandomPerson, misSeatedPerson);
+        $seats.set(indexOfMisSeatedPerson, randomPerson);
+        update($seating);
+end
+
+rule "Uncle Sixten"
+   when
+        $seating : Seating($seats: seats)
+        $sixtenFact : SixtenFact($sixten: sixten, !isSixtenNextToRestroom($seats))
+   then
+        int indexOfSixten = $seats.indexOf($sixten);
+        int indexOfSomePerson = 0;
+        Person somePerson = (Person) $seats.get(indexOfSomePerson);
+        log.info("Switching Sixten " + $sixten + " and " + somePerson);
+        $seats.set(indexOfSomePerson, $sixten);
+        $seats.set(indexOfSixten, somePerson);
+        update($seating);
 end

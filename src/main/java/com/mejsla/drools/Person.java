@@ -22,6 +22,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class Person {
 
+    public enum Gender { M, F }
+
     private static final AtomicInteger IDS = new AtomicInteger(0);
 
     private final String name;
@@ -31,14 +33,6 @@ public class Person {
         int id = IDS.getAndIncrement();
         name = Integer.toString(id);
         gender = (id % 2 == 0) ? Gender.M : Gender.F;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public Gender getGender() {
-        return gender;
     }
 
     public boolean isMale() { return gender == Gender.M; }
@@ -61,14 +55,5 @@ public class Person {
     @Override
     public int hashCode() {
         return Objects.hash(name, gender);
-    }
-
-    public enum Gender {
-        M,
-        F;
-
-        public Gender other() {
-            return (this == M) ? F : M;
-        }
     }
 }

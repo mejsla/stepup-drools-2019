@@ -1,7 +1,6 @@
 package com.mejsla.drools;
 
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.kie.api.KieServices;
 import org.kie.api.runtime.KieContainer;
@@ -11,15 +10,12 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashSet;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
+import java.util.Random;
 
 import static com.mejsla.drools.Seating.isHostessNextToDoor;
 import static com.mejsla.drools.Seating.isSeatingTraditional;
 import static java.util.Arrays.asList;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class SeatingTest {
 
@@ -34,11 +30,12 @@ public class SeatingTest {
 
         Logger ruleLogger = LoggerFactory.getLogger(K_SESSION_NAME);
         kieSession.setGlobal("log", ruleLogger);
+        kieSession.setGlobal("globalRandom", new Random());
     }
 
     @Test
     public void shouldSeatAll() {
-        List<Person> unseatedPersons = createPersons(10);
+        List<Person> unseatedPersons = Utils.createPersons(10);
         List<Person> seats = asList(new Person[unseatedPersons.size()]);
 
         Seating seating = new Seating(unseatedPersons, seats, null);
@@ -53,9 +50,9 @@ public class SeatingTest {
 
     @Test
     public void shouldSeatHostessNextToDoor() {
-        List<Person> unseatedPersons = createPersons(50);
+        List<Person> unseatedPersons = Utils.createPersons(50);
         List<Person> seats = asList(new Person[unseatedPersons.size()]);
-        Person hostess = findHostess(unseatedPersons);
+        Person hostess = Utils.findHostess(unseatedPersons);
 
         Seating seating = new Seating(unseatedPersons, seats, hostess);
 
@@ -69,12 +66,11 @@ public class SeatingTest {
         assertTrue(isHostessNextToDoor(hostess, seats)); // Hostess next to door
     }
 
-    @Ignore
     @Test
     public void shouldSeatMixingGenders() {
-        List<Person> unseatedPersons = createPersons(50);
+        List<Person> unseatedPersons = Utils.createPersons(50);
         List<Person> seats = asList(new Person[unseatedPersons.size()]);
-        Person hostess = findHostess(unseatedPersons);
+        Person hostess = Utils.findHostess(unseatedPersons);
 
         Seating seating = new Seating(unseatedPersons, seats, hostess);
 
@@ -89,15 +85,26 @@ public class SeatingTest {
         assertTrue(isSeatingTraditional(seats)); // Every second man and woman
     }
 
-    private Person findHostess(List<Person> unseatedPersons) {
-        // The hostess is the first women in the list of persons to seat
-        return unseatedPersons.stream().filter(Person::isFemale).findFirst().orElseThrow(IllegalStateException::new);
-    }
+    @Test
+    public void shouldSeatSixten() {
+        List<Person> unseatedPersons = Utils.createPersons(10);
+        List<Person> seats = asList(new Person[unseatedPersons.size()]);
+        Person hostess = Utils.findHostess(unseatedPersons);
+        Person sixten = Utils.findSixten(unseatedPersons);
 
-    private static List<Person> createPersons(int size) {
-        if (size % 2 != 0) {
-            throw new IllegalArgumentException("number of persons must be even");
-        }
-        return IntStream.range(0, size).mapToObj(i -> new Person()).collect(Collectors.toList());
+        Seating seating = new Seating(unseatedPersons, seats, hostess);
+        SixtenFact sixtenFact = new SixtenFact(sixten);
+
+        kieSession.insert(seating);
+        kieSession.insert(sixtenFact);
+        kieSession.fireAllRules();
+
+        // Verify
+        assertTrue(unseatedPersons.isEmpty()); // No unseated persons
+        assertFalse(seats.contains(null)); // No empty seats
+        assertEquals(seats.size(), new HashSet<>(seats).size()); // All seated persons are unique
+        assertTrue(isHostessNextToDoor(hostess, seats)); // Hostess next to door
+        assertTrue(sixtenFact.isSixtenNextToRestroom(seats)); // Sixten next to other door (close to restroom)
+        assertTrue(isSeatingTraditional(seats)); // Every second man and woman
     }
 }
